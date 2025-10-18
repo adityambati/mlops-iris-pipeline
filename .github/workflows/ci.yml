@@ -45,7 +45,7 @@ jobs:
 
       - name: Create CML Report
         if: github.event_name == 'pull_request'
-        uses: iterative/cml@v2.3.0
+        uses: iterative/setup-cml@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           path: report.md
