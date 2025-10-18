@@ -23,7 +23,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip install dvc-gs cml pytest scikit-learn joblib pandas
+          pip install dvc-gs pytest scikit-learn joblib pandas
 
       - name: Authenticate with Google Cloud
         uses: 'google-github-actions/auth@v2'
@@ -45,9 +45,14 @@ jobs:
           echo "metrics from training" >> report.md
           cml comment create --publish report.md
 
-      - name: Create CML Report
+      - name: Set up CML
         if: github.event_name == 'pull_request'
         uses: iterative/setup-cml@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          path: report.md
+
+      - name: Post CML Comment
+        if: github.event_name == 'pull_request'
+        env:
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Use the command you wanted to use to publish the report file
+          cml comment create report.md
