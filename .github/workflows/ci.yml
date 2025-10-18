@@ -1,0 +1,51 @@
+name: MLOps CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install dvc[gcs] pytest scikit-learn joblib pandas
+
+      - name: Authenticate with Google Cloud
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Pull Data and Model with DVC
+        run: |
+          dvc pull
+
+      - name: Run Pytest Unit Tests
+        id: tests
+        run: |
+          pytest --verbose > test-results.txt
+          echo '### Pytest Results' >> report.md
+          echo '```' >> report.md
+          cat test-results.txt >> report.md
+          echo '```' >> report.md
+
+      - name: Create CML Report
+        if: github.event_name == 'pull_request'
+        uses: iterative/cml@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          path: report.md
