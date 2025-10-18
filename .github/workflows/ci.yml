@@ -23,7 +23,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip install dvc[gcs] pytest scikit-learn joblib pandas
+          pip install dvc-gcs pytest scikit-learn joblib pandas
 
       - name: Authenticate with Google Cloud
         uses: 'google-github-actions/auth@v2'
