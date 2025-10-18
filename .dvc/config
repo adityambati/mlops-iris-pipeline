@@ -1,0 +1,4 @@
+[core]
+    remote = myremote
+['remote "myremote"']
+    url = gs://21f3000274-week2-artifacts/dvc-storage
