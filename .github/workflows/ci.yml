@@ -43,16 +43,21 @@ jobs:
           cat test-results.txt >> report.md
           echo '```' >> report.md
           echo "metrics from training" >> report.md
-          cml comment create --publish report.md
 
-      - name: Set up CML
+      - name: Set up Node.js
         if: github.event_name == 'pull_request'
-        uses: iterative/setup-cml@v2
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-      - name: Post CML Comment
+      - name: Install CML via npm
+        if: github.event_name == 'pull_request'
+        run: npm install -g @dvcorg/cml
+
+      - name: Post CML Comment with Test Results
         if: github.event_name == 'pull_request'
         env:
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Use the command you wanted to use to publish the report file
+          # Use the command you wanted to use
           cml comment create report.md
