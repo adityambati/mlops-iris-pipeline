@@ -8,7 +8,7 @@ import mlflow.sklearn
 # --- Configuration ---
 # Define the MLflow model URI using the model registry
 # Format: "models:/<registered_model_name>/<stage_or_version>"
-REGISTERED_MODEL_NAME = "Iris_Decision_Tree" # Choose a name for your registered model
+REGISTERED_MODEL_NAME = "IRIS_Model" # Choose a name for your registered model
 MODEL_STAGE = "Staging" # Or "Production" or a specific version number
 model_uri = f"models:/{REGISTERED_MODEL_NAME}/{MODEL_STAGE}"
 

@@ -57,37 +57,49 @@ def training_pipeline(train_path, eval_path):
     X_eval = eval_data.drop('species', axis=1)
     y_eval = eval_data['species']
 
-    # Define hyperparameters to tune
-    max_depth_options = [2, 3, 5, 7] # Example depths
+    # --- MODIFIED: Define TWO hyperparameters to tune ---
+    max_depth_options = [7]        # Let's try a few depths again
+    min_samples_split_options = [10] # Different minimum samples for splitting
 
-    # Start an MLflow experiment (or connect to an existing one)
+    # Start an MLflow experiment
     mlflow.set_experiment("Iris Classifier Tuning")
+    # Force MLflow to use the local filesystem for tracking
+    mlflow.set_tracking_uri("file:./mlruns")
 
-    # Loop through hyperparameters
+    # --- MODIFIED: Nested loop for hyperparameter combinations ---
     for depth in max_depth_options:
-        # Start a new MLflow run for each trial
-        with mlflow.start_run():
-            print(f"\nTraining with max_depth = {depth}...")
+        for min_split in min_samples_split_options:
+            # Start a new MLflow run for each combination
+            with mlflow.start_run():
+                print(f"\nTraining with max_depth={depth}, min_samples_split={min_split}...")
 
-            # Log the hyperparameter
-            mlflow.log_param("max_depth", depth)
+                # --- MODIFIED: Log BOTH hyperparameters ---
+                mlflow.log_param("max_depth", depth)
+                mlflow.log_param("min_samples_split", min_split)
 
-            # Train the model
-            model = DecisionTreeClassifier(max_depth=depth, random_state=1)
-            model.fit(X_train, y_train)
+                # --- MODIFIED: Train the model with BOTH hyperparameters ---
+                model = DecisionTreeClassifier(
+                    max_depth=depth,
+                    min_samples_split=min_split, # Pass the new parameter
+                    random_state=1
+                )
+                model.fit(X_train, y_train)
 
-            # Evaluate the model
-            predictions = model.predict(X_eval)
-            accuracy = accuracy_score(y_eval, predictions)
-            print(f"  Accuracy: {accuracy:.4f}")
+                # Evaluate the model
+                predictions = model.predict(X_eval)
+                accuracy = accuracy_score(y_eval, predictions)
+                print(f"  Accuracy: {accuracy:.4f}")
 
-            # Log the evaluation metric
-            mlflow.log_metric("accuracy", accuracy)
+                # Log the evaluation metric
+                mlflow.log_metric("accuracy", accuracy)
 
-            # Log the trained model artifact
-            mlflow.sklearn.log_model(model, "model") # "model" is the artifact path within the run
+                # Log the trained model artifact
+                mlflow.sklearn.log_model(model, "model")
 
-            print(f"  ✅ Run logged with max_depth={depth}, accuracy={accuracy:.4f}")
+                # Explicitly end run might still be needed in some envs
+                # mlflow.end_run() # Usually not needed with 'with'
+
+                print(f"  ✅ Run logged: depth={depth}, min_split={min_split}, accuracy={accuracy:.4f}")
 
 # --- Main execution block ---
 if __name__ == "__main__":
