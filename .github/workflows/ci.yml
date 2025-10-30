@@ -59,5 +59,4 @@ jobs:
         env:
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Use the command you wanted to use
           cml comment create report.md
