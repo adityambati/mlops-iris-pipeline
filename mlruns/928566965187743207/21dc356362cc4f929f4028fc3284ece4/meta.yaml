@@ -1,0 +1,14 @@
+artifact_uri: file:///home/jupyter/mlruns/928566965187743207/21dc356362cc4f929f4028fc3284ece4/artifacts
+end_time: 1761740859291
+entry_point_name: ''
+experiment_id: '928566965187743207'
+lifecycle_stage: active
+run_id: 21dc356362cc4f929f4028fc3284ece4
+run_name: charming-snake-490
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1761740855274
+status: 3
+tags: []
+user_id: jupyter
