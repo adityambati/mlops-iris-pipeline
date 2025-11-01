@@ -73,7 +73,7 @@ jobs:
   # Job 2: BUILD AND DEPLOY THE API (CD)
   deploy:
     needs: test-pipeline
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
