@@ -90,24 +90,14 @@ jobs:
 
       # --- THIS IS THE CORRECTED STEP ---
       - name: Download Model from MLflow Registry
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_SERVER_URI }}
         run: |
+          # Install libraries needed just for this script
           pip install mlflow "protobuf<4" scikit-learn==1.3.2 joblib
           
-          export MLFLOW_TRACKING_URI='${{ secrets.MLFLOW_SERVER_URI }}'
-          
-          # Use a 'here document' (<<EOF) to pass the multi-line script to Python
-          python <<EOF
-import mlflow
-import joblib
-import os
-print("--- Starting model download from MLflow Registry ---")
-mlflow.set_tracking_uri(os.environ['MLFLOW_TRACKING_URI'])
-model_uri = 'models:/Iris_Decision_Tree/Staging' 
-print(f"Loading model from: {model_uri}")
-model = mlflow.sklearn.load_model(model_uri)
-joblib.dump(model, 'model.joblib')
-print('✅ Model downloaded from MLflow Registry and saved as model.joblib')
-EOF
+          # Run our new, clean Python script
+          python download_model.py
 
       - name: Build and Push Docker Image
         run: |
