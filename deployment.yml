@@ -1,0 +1,42 @@
+# This file defines two separate "objects" for Kubernetes
+
+# Object 1: The Deployment
+# This tells Kubernetes how to run your app
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iris-api-deployment
+spec:
+  replicas: 2 # Run 2 copies (Pods) of your app for high availability
+  selector:
+    matchLabels:
+      app: iris-api
+  template:
+    metadata:
+      labels:
+        app: iris-api
+    spec:
+      containers:
+      - name: iris-api-container
+        # This 'image:' path is a placeholder.
+        # Our GitHub Action will build our image and replace this path later.
+        image: gcr.io/your-project/iris-api:latest
+        ports:
+        - containerPort: 8080 # The port your app runs on (from app.py and Dockerfile)
+
+---
+# Object 2: The Service
+# This tells Kubernetes how to expose your app to the internet
+apiVersion: v1
+kind: Service
+metadata:
+  name: iris-api-service
+spec:
+  # 'LoadBalancer' creates an external IP address for your app
+  type: LoadBalancer 
+  selector:
+    app: iris-api # This links the Service to the Deployment above
+  ports:
+  - protocol: TCP
+    port: 80         # The port the public will access (e.g., http://[EXTERNAL_IP]:80)
+    targetPort: 8080 # The port your container is running on (from above)

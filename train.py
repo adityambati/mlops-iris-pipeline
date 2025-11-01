@@ -3,11 +3,11 @@ import subprocess
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import accuracy_score # <-- Added
+from sklearn.metrics import accuracy_score
 import joblib
 from datetime import datetime
-import mlflow # <-- Added
-import mlflow.sklearn # <-- Added
+import mlflow
+import mlflow.sklearn
 
 # --- 1. Configuration ---
 PROJECT_ID = "sanguine-stock-473303-b4"
@@ -42,7 +42,6 @@ def prepare_data():
     return train_path, eval_path
 
 # --- 3. Training Loop with Hyperparameter Tuning & MLflow ---
-# (Replaces old train_model and save_and_upload_model)
 def training_pipeline(train_path, eval_path):
     """
     Trains multiple models with different hyperparameters,
@@ -57,14 +56,15 @@ def training_pipeline(train_path, eval_path):
     X_eval = eval_data.drop('species', axis=1)
     y_eval = eval_data['species']
 
-    # --- MODIFIED: Define TWO hyperparameters to tune ---
-    max_depth_options = [7]        # Let's try a few depths again
-    min_samples_split_options = [10] # Different minimum samples for splitting
+    max_depth_options = [7]
+    min_samples_split_options = [10]
 
-    # Start an MLflow experiment
+    # --- CORRECTED ORDER ---
+    # 1. Set the tracking URI FIRST to connect to the remote server.
+    mlflow.set_tracking_uri("http://136.115.81.61:8100") 
+    
+    # 2. Set the experiment. This will now create the experiment on the remote server.
     mlflow.set_experiment("Iris Classifier Tuning")
-    # Force MLflow to use the local filesystem for tracking
-    mlflow.set_tracking_uri("file:./mlruns")
 
     # --- MODIFIED: Nested loop for hyperparameter combinations ---
     for depth in max_depth_options:
@@ -96,21 +96,15 @@ def training_pipeline(train_path, eval_path):
                 # Log the trained model artifact
                 mlflow.sklearn.log_model(model, "model")
 
-                # Explicitly end run might still be needed in some envs
-                # mlflow.end_run() # Usually not needed with 'with'
-
                 print(f"  ✅ Run logged: depth={depth}, min_split={min_split}, accuracy={accuracy:.4f}")
 
 # --- Main execution block ---
 if __name__ == "__main__":
-    # Ensure data splits are present (DVC should handle this eventually)
     if not (os.path.exists("data/train.csv") and os.path.exists("data/eval.csv")):
         train_data_file, eval_data_file = prepare_data()
     else:
         train_data_file, eval_data_file = "data/train.csv", "data/eval.csv"
         print("Train/Eval data files already exist.")
 
-    # Run the training pipeline which now includes MLflow logging
     training_pipeline(train_data_file, eval_data_file)
-
     print("\nTraining pipeline finished successfully! Check MLflow UI.")

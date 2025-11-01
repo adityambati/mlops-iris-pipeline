@@ -1,4 +1,4 @@
-name: MLOps CI Pipeline
+name: MLOps CI-CD Pipeline
 
 on:
   push:
@@ -10,6 +10,7 @@ on:
       - main
 
 jobs:
+  # Job 1: TEST THE CODE (CI)
   test-pipeline:
     runs-on: ubuntu-latest
     steps:
@@ -23,26 +24,34 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip install dvc-gs pytest scikit-learn joblib pandas
+          pip install dvc dvc-gs pytest scikit-learn==1.3.2 joblib pandas mlflow "protobuf<4"
 
-      - name: Authenticate with Google Cloud
+      - name: Authenticate with Google Cloud (DVC)
         uses: 'google-github-actions/auth@v2'
         with:
-          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+          credentials_json: '${{ secrets.GCP_SA_KEY }}' # For DVC pull
 
-      - name: Pull Data and Model with DVC
+      - name: Pull Evaluation Data with DVC
         run: |
-          dvc pull
+          dvc pull data/eval.csv # We only pull the data, not the model
 
+      # THIS STEP IS NOW CORRECTLY INDENTED
       - name: Run Pytest Unit Tests
         id: tests
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_SERVER_URI }}
         run: |
-          pytest --verbose > test-results.txt
+          # Use 'set -o pipefail' so that if pytest fails, the step fails
+          set -o pipefail
+          
+          # Use 'tee' to print to the log AND save to the file
+          pytest --verbose | tee test-results.txt
+          
+          # Create the report for CML
           echo '### Pytest Results' >> report.md
           echo '```' >> report.md
           cat test-results.txt >> report.md
           echo '```' >> report.md
-          echo "metrics from training" >> report.md
 
       - name: Set up Node.js
         if: github.event_name == 'pull_request'
@@ -60,3 +69,51 @@ jobs:
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cml comment create report.md
+
+  # Job 2: BUILD AND DEPLOY THE API (CD)
+  deploy:
+    needs: test-pipeline
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate with Google Cloud (for CD)
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_CD_SA_KEY }}'
+
+      - name: Set up GKE credentials
+        uses: 'google-github-actions/get-gke-credentials@v2'
+        with:
+          cluster_name: iris-cluster
+          location: us-central1 
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: Download Model from MLflow Registry
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_SERVER_URI }}
+        run: |
+          # Install libraries needed just for this script
+          pip install mlflow "protobuf<4" scikit-learn==1.3.2 joblib google-cloud-storage
+          
+          # Run our clean Python script
+          python download_model.py
+
+      - name: Build and Push Docker Image
+        run: |
+          export IMAGE_NAME="us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/iris-api-repo/iris-api:${{ github.sha }}"
+          docker build -t $IMAGE_NAME .
+          docker push $IMAGE_NAME
+
+      - name: Deploy to GKE
+        run: |
+          export IMAGE_NAME="us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/iris-api-repo/iris-api:${{ github.sha }}"
+          
+          sed -i "s|image: .*|image: $IMAGE_NAME|g" deployment.yml
+          
+          kubectl apply -f deployment.yml
