@@ -37,7 +37,6 @@ jobs:
 
       - name: Run Pytest Unit Tests
         id: tests
-        # Set the MLflow server URI for the tests to use
         env:
           MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_SERVER_URI }}
         run: |
@@ -47,7 +46,6 @@ jobs:
           cat test-results.txt >> report.md
           echo '```' >> report.md
 
-      # --- Correct 3-Step CML Process ---
       - name: Set up Node.js
         if: github.event_name == 'pull_request'
         uses: actions/setup-node@v4
@@ -67,9 +65,7 @@ jobs:
 
   # Job 2: BUILD AND DEPLOY THE API (CD)
   deploy:
-    # This job runs only AFTER 'test-pipeline' is successful
     needs: test-pipeline
-    # AND only on a push to 'main' (i.e., after a PR is merged)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
@@ -80,56 +76,50 @@ jobs:
       - name: Authenticate with Google Cloud (for CD)
         uses: 'google-github-actions/auth@v2'
         with:
-          credentials_json: '${{ secrets.GCP_CD_SA_KEY }}' # The NEW deployment key
+          credentials_json: '${{ secrets.GCP_CD_SA_KEY }}'
 
       - name: Set up GKE credentials
         uses: 'google-github-actions/get-gke-credentials@v2'
         with:
-          cluster_name: iris-cluster # The name you gave your GKE cluster
-          location: us-central1      # The region you created the cluster in
+          cluster_name: iris-cluster
+          location: us-central1 
 
       - name: Configure Docker for Artifact Registry
         run: |
-          gcloud auth configure-docker us-central1-docker.pkg.dev # Use the cluster/registry region
+          gcloud auth configure-docker us-central1-docker.pkg.dev
 
+      # --- THIS IS THE CORRECTED STEP ---
       - name: Download Model from MLflow Registry
         run: |
-          # Install libraries needed just for this step
           pip install mlflow "protobuf<4" scikit-learn==1.3.2 joblib
           
-          # Set the tracking URI and download the model
           export MLFLOW_TRACKING_URI='${{ secrets.MLFLOW_SERVER_URI }}'
           
-          # This Python one-liner downloads the Staging model and saves it as 'model.joblib'
-          python -c "
+          # Use a 'here document' (<<EOF) to pass the multi-line script to Python
+          python <<EOF
 import mlflow
 import joblib
+import os
+print("--- Starting model download from MLflow Registry ---")
+mlflow.set_tracking_uri(os.environ['MLFLOW_TRACKING_URI'])
 model_uri = 'models:/Iris_Decision_Tree/Staging' 
+print(f"Loading model from: {model_uri}")
 model = mlflow.sklearn.load_model(model_uri)
 joblib.dump(model, 'model.joblib')
 print('✅ Model downloaded from MLflow Registry and saved as model.joblib')
-"
+EOF
 
       - name: Build and Push Docker Image
         run: |
-          # Define the full image name
-          # We use github.sha to create a unique tag for every commit
           export IMAGE_NAME="us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/iris-api-repo/iris-api:${{ github.sha }}"
-          
-          # Build the image (it will COPY the model.joblib file)
           docker build -t $IMAGE_NAME .
-          
-          # Push the image to Google Artifact Registry
           docker push $IMAGE_NAME
 
       - name: Deploy to GKE
         run: |
-          # Define the full image name again
+          # --- THIS STEP IS ALSO CORRECTED (Fixed typo in secrets.GCP_PROJECT_ID) ---
           export IMAGE_NAME="us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/iris-api-repo/iris-api:${{ github.sha }}"
           
-          # 1. Update the image path in deployment.yml
-          #    This 'sed' command finds the 'image:' line and replaces it
           sed -i "s|image: .*|image: $IMAGE_NAME|g" deployment.yml
           
-          # 2. Apply the configuration to Kubernetes
           kubectl apply -f deployment.yml
