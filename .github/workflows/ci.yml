@@ -36,15 +36,21 @@ jobs:
           dvc pull data/eval.csv # We only pull the data, not the model
 
       - name: Run Pytest Unit Tests
-        id: tests
-        env:
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_SERVER_URI }}
-        run: |
-          pytest --verbose > test-results.txt
-          echo '### Pytest Results' >> report.md
-          echo '```' >> report.md
-          cat test-results.txt >> report.md
-          echo '```' >> report.md
+    id: tests
+    env:
+      MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_SERVER_URI }}
+    run: |
+      # Use 'set -o pipefail' so that if pytest fails, the step fails
+      set -o pipefail
+
+      # Use 'tee' to print to the log AND save to the file
+      pytest --verbose | tee test-results.txt
+
+      # Create the report for CML
+      echo '### Pytest Results' >> report.md
+      echo '```' >> report.md
+      cat test-results.txt >> report.md
+      echo '```' >> report.md
 
       - name: Set up Node.js
         if: github.event_name == 'pull_request'
