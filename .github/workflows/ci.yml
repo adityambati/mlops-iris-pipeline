@@ -35,22 +35,23 @@ jobs:
         run: |
           dvc pull data/eval.csv # We only pull the data, not the model
 
-     - name: Run Pytest Unit Tests
-       id: tests
-       env:
-         MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_SERVER_URI }}
-       run: |
-         # Use 'set -o pipefail' so that if pytest fails, the step fails
-         set -o pipefail
-
-         # Use 'tee' to print to the log AND save to the file
-         pytest --verbose | tee test-results.txt
-
-         # Create the report for CML
-         echo '### Pytest Results' >> report.md
-         echo '```' >> report.md
-         cat test-results.txt >> report.md
-         echo '```' >> report.md
+      # THIS STEP IS NOW CORRECTLY INDENTED
+      - name: Run Pytest Unit Tests
+        id: tests
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_SERVER_URI }}
+        run: |
+          # Use 'set -o pipefail' so that if pytest fails, the step fails
+          set -o pipefail
+          
+          # Use 'tee' to print to the log AND save to the file
+          pytest --verbose | tee test-results.txt
+          
+          # Create the report for CML
+          echo '### Pytest Results' >> report.md
+          echo '```' >> report.md
+          cat test-results.txt >> report.md
+          echo '```' >> report.md
 
       - name: Set up Node.js
         if: github.event_name == 'pull_request'
@@ -74,7 +75,6 @@ jobs:
     needs: test-pipeline
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -94,7 +94,6 @@ jobs:
         run: |
           gcloud auth configure-docker us-central1-docker.pkg.dev
 
-      # --- THIS IS THE CORRECTED STEP ---
       - name: Download Model from MLflow Registry
         env:
           MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_SERVER_URI }}
@@ -102,7 +101,7 @@ jobs:
           # Install libraries needed just for this script
           pip install mlflow "protobuf<4" scikit-learn==1.3.2 joblib
           
-          # Run our new, clean Python script
+          # Run our clean Python script
           python download_model.py
 
       - name: Build and Push Docker Image
@@ -113,8 +112,7 @@ jobs:
 
       - name: Deploy to GKE
         run: |
-          # --- THIS STEP IS ALSO CORRECTED (Fixed typo in secrets.GCP_PROJECT_ID) ---
-          export IMAGE_NAME="us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/iris-api-repo/iris-api:${{ github.sha }}"
+          export IMAGE_NAME="us-central1-docker.pkg.dev/${{ secrets.GGCP_PROJECT_ID }}/iris-api-repo/iris-api:${{ github.sha }}"
           
           sed -i "s|image: .*|image: $IMAGE_NAME|g" deployment.yml
           
