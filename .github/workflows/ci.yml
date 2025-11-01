@@ -112,7 +112,7 @@ jobs:
 
       - name: Deploy to GKE
         run: |
-          export IMAGE_NAME="us-central1-docker.pkg.dev/${{ secrets.GGCP_PROJECT_ID }}/iris-api-repo/iris-api:${{ github.sha }}"
+          export IMAGE_NAME="us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/iris-api-repo/iris-api:${{ github.sha }}"
           
           sed -i "s|image: .*|image: $IMAGE_NAME|g" deployment.yml
           
