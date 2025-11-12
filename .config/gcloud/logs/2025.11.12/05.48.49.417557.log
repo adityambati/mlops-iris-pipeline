@@ -1,0 +1,28 @@
+2025-11-12 05:48:49,421 DEBUG    root            Loaded Command Group: ['gcloud', 'services']
+2025-11-12 05:48:49,440 DEBUG    root            Loaded Command Group: ['gcloud', 'services', 'list']
+2025-11-12 05:48:49,452 DEBUG    root            Running [gcloud.services.list] with arguments: [--enabled: "True", --filter: "NAME=dataproc.googleapis.com", --project: "sanguine-stock-473303-b4"]
+2025-11-12 05:48:49,571 DEBUG    root            Chosen display Format:
+          table(
+            config.name:label=NAME:sort=1,
+            config.title
+          )
+        
+2025-11-12 05:48:49,573 INFO     root            Display format: "
+          table(
+            config.name:label=NAME:sort=1,
+            config.title
+          )
+        "
+2025-11-12 05:48:49,587 DEBUG    urllib3.connectionpool Starting new HTTPS connection (1): serviceusage.googleapis.com:443
+2025-11-12 05:48:50,075 DEBUG    urllib3.connectionpool https://serviceusage.googleapis.com:443 "GET /v1/projects/sanguine-stock-473303-b4/services?alt=json&filter=state%3AENABLED&pageSize=200 HTTP/11" 200 None
+2025-11-12 05:48:50,259 INFO     ___FILE_ONLY___ NAME
+2025-11-12 05:48:50,259 INFO     ___FILE_ONLY___                      
+2025-11-12 05:48:50,260 INFO     ___FILE_ONLY___ TITLE
+2025-11-12 05:48:50,260 INFO     ___FILE_ONLY___ 
+
+2025-11-12 05:48:50,260 INFO     ___FILE_ONLY___ dataproc.googleapis.com
+2025-11-12 05:48:50,260 INFO     ___FILE_ONLY___   
+2025-11-12 05:48:50,260 INFO     ___FILE_ONLY___ Cloud Dataproc API
+2025-11-12 05:48:50,260 INFO     ___FILE_ONLY___ 
+
+2025-11-12 05:48:50,269 DEBUG    root            SDK update checks are disabled.

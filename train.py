@@ -61,7 +61,7 @@ def training_pipeline(train_path, eval_path):
 
     # --- CORRECTED ORDER ---
     # 1. Set the tracking URI FIRST to connect to the remote server.
-    mlflow.set_tracking_uri("http://136.115.81.61:8100") 
+    mlflow.set_tracking_uri("http://34.44.48.112:8100") 
     
     # 2. Set the experiment. This will now create the experiment on the remote server.
     mlflow.set_experiment("Iris Classifier Tuning")

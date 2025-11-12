@@ -1,0 +1,10 @@
+2025-11-09 11:19:01,796 DEBUG    root            Loaded Command Group: ['gcloud', 'projects']
+2025-11-09 11:19:01,808 DEBUG    root            Loaded Command Group: ['gcloud', 'projects', 'describe']
+2025-11-09 11:19:01,812 DEBUG    root            Running [gcloud.projects.describe] with arguments: [--format: "value(projectNumber)", PROJECT_ID_OR_NUMBER: "sanguine-stock-473303-b4"]
+2025-11-09 11:19:01,962 DEBUG    urllib3.connectionpool Starting new HTTPS connection (1): cloudresourcemanager.googleapis.com:443
+2025-11-09 11:19:02,020 DEBUG    urllib3.connectionpool https://cloudresourcemanager.googleapis.com:443 "GET /v1/projects/sanguine-stock-473303-b4?alt=json HTTP/11" 200 None
+2025-11-09 11:19:02,023 DEBUG    root            Chosen display Format:default value(projectNumber)
+2025-11-09 11:19:02,024 INFO     root            Display format: "default value(projectNumber)"
+2025-11-09 11:19:02,125 INFO     ___FILE_ONLY___ 1080590608745
+
+2025-11-09 11:19:02,141 DEBUG    root            SDK update checks are disabled.

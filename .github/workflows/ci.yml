@@ -117,3 +117,94 @@ jobs:
           sed -i "s|image: .*|image: $IMAGE_NAME|g" deployment.yml
           
           kubectl apply -f deployment.yml
+
+      - name: Install wrk
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wrk
+
+      - name: Wait for Load Balancer IP
+        run: |
+          echo "Waiting for external IP..."
+          COUNTER=0
+          while [ $COUNTER -lt 30 ]; do
+            EXTERNAL_IP=$(kubectl get service iris-api-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+            if [ -n "$EXTERNAL_IP" ]; then
+              echo "External IP found: $EXTERNAL_IP"
+              echo "EXTERNAL_IP=$EXTERNAL_IP" >> $GITHUB_ENV
+              break
+            fi
+            echo "Still waiting for IP..."
+            sleep 10
+            COUNTER=$((COUNTER+1))
+          done
+          if [ -z "$EXTERNAL_IP" ]; then
+            echo "Error: Load Balancer IP not found after 5 minutes."
+            exit 1
+          fi
+
+      - name: Run Stress Test (1000 requests)
+        run: |
+          echo "--- Running Stress Test (1000 requests, 10 threads, 30s) ---"
+          # -t10 = 10 threads, -c1000 = 1000 connections, -d30s = 30 seconds
+          wrk -t10 -c1000 -d30s http://${{ env.EXTERNAL_IP }}/health
+          echo "--------------------------------------------------------"
+
+      - name: Check HPA status after first test
+        run: |
+          echo "--- Checking HPA status after 1000-request test ---"
+          kubectl get hpa iris-api-hpa
+          echo "Wait 60s for scaling to be visible..."
+          sleep 60
+          kubectl get hpa iris-api-hpa
+          kubectl get pods -l app=iris-api
+          echo "---------------------------------------------------"
+
+      - name: Run Bottleneck Test (2000 requests)
+        run: |
+          echo "--- Running Bottleneck Test (2000 requests, 20 threads, 30s) ---"
+          # -t20 = 20 threads, -c2000 = 2000 connections, -d30s = 30 seconds
+          wrk -t20 -c2000 -d30s --timeout 5s http://${{ env.EXTERNAL_IP }}/health || true
+          echo "----------------------------------------------------------"
+
+      - name: Check HPA status after second test
+        run: |
+          echo "--- Checking HPA status after 2000-request test ---"
+          kubectl get hpa iris-api-hpa
+          kubectl get pods -l app=iris-api
+          echo "---------------------------------------------------"
+
+      # --- NEW CML REPORTING STEPS ---
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install CML via npm
+        run: npm install -g @dvcorg/cml
+
+
+      - name: Generate Stress Test Report
+        run: |
+          sleep 30
+          # Create a new markdown file for the report
+          echo "### Stress Test Results" > stress_report.md
+
+          # Run the first test (autoscaling) and append its output to the file
+          echo "\n**Autoscaling Test (1000 Connections):**" >> stress_report.md
+          echo '```' >> stress_report.md
+          wrk -t10 -c1000 -d30s http://${{ env.EXTERNAL_IP }}/health 2>&1 >> stress_report.md || true
+          echo '```' >> stress_report.md
+
+          # Run the second test (bottleneck) and append its output
+          echo "\n**Bottleneck Test (2000 Connections):**" >> stress_report.md
+          echo '```' >> stress_report.md
+          wrk -t20 -c2000 -d30s --timeout 5s http://${{ env.EXTERNAL_IP }}/health 2>&1 >> stress_report.md || true
+          echo '```' >> stress_report.md
+
+      - name: Post Stress Test Report
+        env:
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # This will publish the report as a comment on the commit
+          cml comment create stress_report.md
