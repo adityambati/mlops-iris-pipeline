@@ -184,8 +184,10 @@ jobs:
       - name: Install CML via npm
         run: npm install -g @dvcorg/cml
 
+
       - name: Generate Stress Test Report
         run: |
+          sleep 30
           # Create a new markdown file for the report
           echo "### Stress Test Results" > stress_report.md
 
