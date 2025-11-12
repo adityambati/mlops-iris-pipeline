@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - dev
+      - feature/week-7-stress-testing
   pull_request:
     branches:
       - main
