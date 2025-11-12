@@ -192,13 +192,13 @@ jobs:
           # Run the first test (autoscaling) and append its output to the file
           echo "\n**Autoscaling Test (1000 Connections):**" >> stress_report.md
           echo '```' >> stress_report.md
-          wrk -t10 -c1000 -d30s http://${{ env.EXTERNAL_IP }}/health >> stress_report.md || true
+          wrk -t10 -c1000 -d30s http://${{ env.EXTERNAL_IP }}/health 2>&1 >> stress_report.md || true
           echo '```' >> stress_report.md
 
           # Run the second test (bottleneck) and append its output
           echo "\n**Bottleneck Test (2000 Connections):**" >> stress_report.md
           echo '```' >> stress_report.md
-          wrk -t20 -c2000 -d30s --timeout 5s http://${{ env.EXTERNAL_IP }}/health >> stress_report.md || true
+          wrk -t20 -c2000 -d30s --timeout 5s http://${{ env.EXTERNAL_IP }}/health 2>&1 >> stress_report.md || true
           echo '```' >> stress_report.md
 
       - name: Post Stress Test Report
