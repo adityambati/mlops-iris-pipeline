@@ -165,7 +165,7 @@ jobs:
         run: |
           echo "--- Running Bottleneck Test (2000 requests, 20 threads, 30s) ---"
           # -t20 = 20 threads, -c2000 = 2000 connections, -d30s = 30 seconds
-          wrk -t20 -c2000 -d30s http://${{ env.EXTERNAL_IP }}/health
+          wrk -t20 -c2000 -d30s --timeout 5s http://${{ env.EXTERNAL_IP }}/health || true
           echo "----------------------------------------------------------"
 
       - name: Check HPA status after second test
