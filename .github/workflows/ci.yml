@@ -174,3 +174,36 @@ jobs:
           kubectl get hpa iris-api-hpa
           kubectl get pods -l app=iris-api
           echo "---------------------------------------------------"
+
+      # --- NEW CML REPORTING STEPS ---
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install CML via npm
+        run: npm install -g @dvcorg/cml
+
+      - name: Generate Stress Test Report
+        run: |
+          # Create a new markdown file for the report
+          echo "### Stress Test Results" > stress_report.md
+
+          # Run the first test (autoscaling) and append its output to the file
+          echo "\n**Autoscaling Test (1000 Connections):**" >> stress_report.md
+          echo '```' >> stress_report.md
+          wrk -t10 -c1000 -d30s http://${{ env.EXTERNAL_IP }}/health >> stress_report.md || true
+          echo '```' >> stress_report.md
+
+          # Run the second test (bottleneck) and append its output
+          echo "\n**Bottleneck Test (2000 Connections):**" >> stress_report.md
+          echo '```' >> stress_report.md
+          wrk -t20 -c2000 -d30s --timeout 5s http://${{ env.EXTERNAL_IP }}/health >> stress_report.md || true
+          echo '```' >> stress_report.md
+
+      - name: Post Stress Test Report
+        env:
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # This will publish the report as a comment on the commit
+          cml comment create stress_report.md
