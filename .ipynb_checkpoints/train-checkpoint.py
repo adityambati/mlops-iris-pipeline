@@ -19,34 +19,32 @@ DATA_BUCKET_URI = "gs://21f3000274-week1-data"
 def prepare_data():
     """Downloads the master dataset from GCS and splits it into train/eval sets."""
     print("--- Starting Data Preparation ---")
-
     os.makedirs("data", exist_ok=True)
     master_data_path = "data/data.csv"
     train_path = "data/train.csv"
     eval_path = "data/eval.csv"
-
     if not os.path.exists(master_data_path):
         print(f"Downloading data from {DATA_BUCKET_URI}...")
         subprocess.run(["gsutil", "cp", f"{DATA_BUCKET_URI}/data.csv", master_data_path], check=True)
     else:
         print("Master data file already exists.")
-
     print("Splitting data into train and eval sets...")
     df = pd.read_csv(master_data_path)
     train_df, eval_df = train_test_split(df, test_size=0.2, random_state=42, stratify=df['species'])
     train_df.to_csv(train_path, index=False)
     eval_df.to_csv(eval_path, index=False)
-
     print(f"✅ Data preparation complete. Files created: {train_path}, {eval_path}")
     return train_path, eval_path
 
-# --- CORRECTED POISONING FUNCTION ---
+# --- CORRECTED POISONING FUNCTION (Label Flipping) ---
 def poison_data(data_df, poison_level):
-    """Poisons a percentage of the training data by replacing features with random noise."""
+    """
+    Poisons a percentage of the training data by FLIPPING THE LABELS.
+    """
     if poison_level == 0.0:
-        return data_df  # Return the clean data for the 0% baseline run
+        return data_df  # Return the clean data
 
-    print(f"  ...poisoning {poison_level*100}% of training data...")
+    print(f"  ...poisoning {poison_level*100}% of training LABELS...")
     poisoned_df = data_df.copy()
     
     n_samples = int(poisoned_df.shape[0] * poison_level)
@@ -55,22 +53,19 @@ def poison_data(data_df, poison_level):
         
     poison_indices = np.random.choice(poisoned_df.index, n_samples, replace=False)
     
-    feature_cols = ['sepal_length', 'sepal_width', 'petal_length', 'petal_width']
+    all_species = ['setosa', 'versicolor', 'virginica']
     
-    for col in feature_cols:
-        # Create random noise (e.g., from 0 to 50)
-        noise = np.random.uniform(0, 50, n_samples)
-        
-        # Assign the noise as a raw list to avoid index-alignment issues
-        poisoned_df.loc[poison_indices, col] = noise.tolist()
-        
+    for i in poison_indices:
+        original_label = poisoned_df.loc[i, 'species']
+        wrong_labels = [label for label in all_species if label != original_label]
+        poisoned_df.loc[i, 'species'] = np.random.choice(wrong_labels)
+            
     return poisoned_df
 
-# --- 3. Training Loop with Hyperparameter Tuning & MLflow ---
+# --- 3. Training Loop with Data Poisoning ---
 def training_pipeline(train_path, eval_path):
     """
-    Trains multiple models with different hyperparameters,
-    evaluates them, and logs results to MLflow.
+    Trains one model for each poison level and logs to MLflow.
     """
     print("\n--- Starting Training Pipeline ---")
     train_data = pd.read_csv(train_path)
@@ -79,16 +74,20 @@ def training_pipeline(train_path, eval_path):
     X_eval = eval_data.drop('species', axis=1)
     y_eval = eval_data['species']
 
+    # Define poison levels from the assignment
     poison_levels = [0.0, 0.05, 0.10, 0.50]
-    max_depth_options = [7]
-    min_samples_split_options = [10]
+    
+    # --- SIMPLIFIED: Use one set of good hyperparameters ---
+    fixed_depth = 7
+    fixed_min_split = 10
 
-    # Set the tracking URI FIRST to connect to the remote server.
+    # 1. Set the tracking URI FIRST to connect to the remote server.
     mlflow.set_tracking_uri("http://34.122.196.63:8100") # ⚠️ Make sure this IP is correct!
     
-    # --- MODIFIED: Use a new experiment name ---
-    mlflow.set_experiment("Iris Poisoning") 
+    # 2. Set the experiment.
+    mlflow.set_experiment("Iris Poisoning - Label Flip Attack")
 
+    # --- SIMPLIFIED: Loop ONLY through poison levels ---
     for poison_level in poison_levels:
         
         print(f"\n--- Starting run for POISON_LEVEL: {poison_level*100}% ---")
@@ -97,30 +96,31 @@ def training_pipeline(train_path, eval_path):
         X_train = poisoned_train_data.drop('species', axis=1)
         y_train = poisoned_train_data['species']
 
-        for depth in max_depth_options:
-            for min_split in min_samples_split_options:
-                with mlflow.start_run():
-                    print(f"\nTraining with poison={poison_level*100}%, max_depth={depth}, min_split={min_split}...")
+        # Start a new MLflow run
+        with mlflow.start_run():
+            print(f"\nTraining with poison={poison_level*100}%...")
 
-                    mlflow.log_param("poison_percentage", poison_level * 100)
-                    mlflow.log_param("max_depth", depth)
-                    mlflow.log_param("min_samples_split", min_split)
+            # Log parameters
+            mlflow.log_param("poison_percentage", poison_level * 100)
+            mlflow.log_param("max_depth", fixed_depth)
+            mlflow.log_param("min_samples_split", fixed_min_split)
 
-                    model = DecisionTreeClassifier(
-                        max_depth=depth,
-                        min_samples_split=min_split,
-                        random_state=1
-                    )
-                    model.fit(X_train, y_train) 
+            model = DecisionTreeClassifier(
+                max_depth=fixed_depth,
+                min_samples_split=fixed_min_split,
+                random_state=1
+            )
+            model.fit(X_train, y_train) 
 
-                    predictions = model.predict(X_eval)
-                    accuracy = accuracy_score(y_eval, predictions)
-                    print(f"  Accuracy: {accuracy:.4f}")
+            # Evaluate the model on the CLEAN evaluation set
+            predictions = model.predict(X_eval)
+            accuracy = accuracy_score(y_eval, predictions)
+            print(f"  Accuracy: {accuracy:.4f}")
 
-                    mlflow.log_metric("accuracy", accuracy)
-                    mlflow.sklearn.log_model(model, "model")
+            mlflow.log_metric("accuracy", accuracy)
+            mlflow.sklearn.log_model(model, "model")
 
-                    print(f"  ✅ Run logged: poison={poison_level*100}%, depth={depth}, min_split={min_split}, accuracy={accuracy:.4f}")
+            print(f"  ✅ Run logged: poison={poison_level*100}%, accuracy={accuracy:.4f}")
 
 # --- Main execution block ---
 if __name__ == "__main__":
