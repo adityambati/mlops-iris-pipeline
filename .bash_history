@@ -217,3 +217,12 @@ python train.py
 curl -X POST http://136.112.143.121:80/predict      -H "Content-Type: application/json"      -d '{"sepal_length": 5.1, "sepal_width": 3.5, "petal_length": 1.4, "petal_width": 0.2}'
 
 curl -X POST http://136.112.143.121:80/predict      -H "Content-Type: application/json"      -d '{"sepal_length": 5.1, "sepal_width": 3.5, "petal_length": 1.4, "petal_width": 0.2}'
+git checkout main
+git add .
+git commit -m "Logs"
+git checkout main
+clear
+git pull origin main
+git checkout dev
+git merge main
+git push origin dev
