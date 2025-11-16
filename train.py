@@ -87,7 +87,7 @@ def training_pipeline(train_path, eval_path):
     mlflow.set_tracking_uri("http://34.122.196.63:8100") # ⚠️ Make sure this IP is correct!
     
     # --- MODIFIED: Use a new experiment name ---
-    mlflow.set_experiment("Iris Poisoning v2") 
+    mlflow.set_experiment("Iris Poisoning") 
 
     for poison_level in poison_levels:
         
